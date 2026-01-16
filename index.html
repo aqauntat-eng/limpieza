@@ -189,6 +189,9 @@
             
             html += '</table>';
             document.getElementById('result').innerHTML = html;
+            
+            // Автоматический скролл к таблице
+            document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function formatDate(date) {
