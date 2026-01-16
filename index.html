@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpieza</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 40px;
+            font-size: 18px;
+        }
+        h1 {
+            font-size: 36px;
+            margin-bottom: 30px;
+        }
+        .months-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+        .month-button {
+            padding: 20px;
+            font-size: 18px;
+            color: black;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+        .month-button:hover {
+            opacity: 0.8;
+        }
+        .month-button.green {
+            background: #90EE90;
+        }
+        .month-button.blue {
+            background: #87CEEB;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+            font-size: 18px;
+        }
+        th, td {
+            border: 2px solid #ddd;
+            padding: 15px;
+            text-align: center;
+        }
+        th {
+            background-color: #87CEEB;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .weekend-col {
+            background-color: #90EE90;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Limpieza</h1>
+    
+    <div class="months-container" id="monthsContainer"></div>
+    
+    <div id="result"></div>
+
+    <script>
+        const rooms = {
+            'W': 'Willdave',
+            'B': 'Belkis',
+            'A': 'Anderly',
+            'T': 'Tural',
+            'J': 'Jennifer'
+        };
+
+        const rotationPattern = [
+            {Baño: 'A', Sala: 'J', Cocina: 'W', Lavanderia: 'B', Nada: 'T'},
+            {Baño: 'T', Sala: 'A', Cocina: 'J', Lavanderia: 'W', Nada: 'B'},
+            {Baño: 'B', Sala: 'T', Cocina: 'A', Lavanderia: 'J', Nada: 'W'},
+            {Baño: 'W', Sala: 'B', Cocina: 'T', Lavanderia: 'A', Nada: 'J'},
+            {Baño: 'J', Sala: 'W', Cocina: 'B', Lavanderia: 'T', Nada: 'A'}
+        ];
+
+        const startDate = new Date(2026, 0, 16, 12, 0, 0); // 16 января 2026
+        
+        const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+        function renderMonths() {
+            let html = '';
+            for (let year = 2026; year <= 2028; year++) {
+                for (let month = 0; month < 12; month++) {
+                    const quarter = Math.floor(month / 3);
+                    const colorClass = quarter % 2 === 0 ? 'green' : 'blue';
+                    html += `<button class="month-button ${colorClass}" onclick="showMonth(${year}, ${month})">${monthNames[month]} ${year}</button>`;
+                }
+            }
+            document.getElementById('monthsContainer').innerHTML = html;
+        }
+
+        function showMonth(year, month) {
+            const weekends = [];
+            
+            // Проверяем все пятницы текущего месяца
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day, 12, 0, 0);
+                const dayOfWeek = date.getDay();
+                
+                if (dayOfWeek === 5) {
+                    const friday = new Date(year, month, day, 12, 0, 0);
+                    const saturday = new Date(year, month, day + 1, 12, 0, 0);
+                    const sunday = new Date(year, month, day + 2, 12, 0, 0);
+                    
+                    const diffTime = friday - startDate;
+                    const diffWeeks = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));
+                    const rotationIndex = ((diffWeeks % 5) + 5) % 5;
+                    
+                    const schedule = rotationPattern[rotationIndex];
+                    
+                    weekends.push({
+                        friday: formatDate(friday),
+                        saturday: formatDate(saturday),
+                        sunday: formatDate(sunday),
+                        schedule: schedule
+                    });
+                }
+            }
+            
+            // Проверяем пятницу предыдущего месяца (если суббота/воскресенье в текущем месяце)
+            const prevMonth = month === 0 ? 11 : month - 1;
+            const prevYear = month === 0 ? year - 1 : year;
+            const daysInPrevMonth = new Date(prevYear, prevMonth + 1, 0).getDate();
+            
+            for (let day = Math.max(1, daysInPrevMonth - 6); day <= daysInPrevMonth; day++) {
+                const date = new Date(prevYear, prevMonth, day, 12, 0, 0);
+                const dayOfWeek = date.getDay();
+                
+                if (dayOfWeek === 5) {
+                    const friday = new Date(prevYear, prevMonth, day, 12, 0, 0);
+                    const saturday = new Date(prevYear, prevMonth, day + 1, 12, 0, 0);
+                    const sunday = new Date(prevYear, prevMonth, day + 2, 12, 0, 0);
+                    
+                    // Проверяем, что суббота или воскресенье в текущем месяце
+                    if (saturday.getMonth() === month || sunday.getMonth() === month) {
+                        const diffTime = friday - startDate;
+                        const diffWeeks = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));
+                        const rotationIndex = ((diffWeeks % 5) + 5) % 5;
+                        
+                        const schedule = rotationPattern[rotationIndex];
+                        
+                        weekends.unshift({
+                            friday: formatDate(friday),
+                            saturday: formatDate(saturday),
+                            sunday: formatDate(sunday),
+                            schedule: schedule
+                        });
+                    }
+                }
+            }
+            
+            let html = '<table>';
+            html += '<tr>';
+            html += '<th class="weekend-col">Fin de Semana (V-D)</th>';
+            html += '<th>Baño</th>';
+            html += '<th>Sala</th>';
+            html += '<th>Cocina</th>';
+            html += '<th>Lavanderia</th>';
+            html += '<th>Nada</th>';
+            html += '</tr>';
+            
+            weekends.forEach(weekend => {
+                html += '<tr>';
+                html += '<td class="weekend-col">' + weekend.friday + ' al ' + weekend.sunday + '</td>';
+                html += '<td>' + rooms[weekend.schedule.Baño] + '</td>';
+                html += '<td>' + rooms[weekend.schedule.Sala] + '</td>';
+                html += '<td>' + rooms[weekend.schedule.Cocina] + '</td>';
+                html += '<td>' + rooms[weekend.schedule.Lavanderia] + '</td>';
+                html += '<td>' + (weekend.schedule.Nada ? rooms[weekend.schedule.Nada] : '') + '</td>';
+                html += '</tr>';
+            });
+            
+            html += '</table>';
+            document.getElementById('result').innerHTML = html;
+        }
+
+        function formatDate(date) {
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            return `${day}/${month}`;
+        }
+
+        renderMonths();
+    </script>
+</body>
+</html>
