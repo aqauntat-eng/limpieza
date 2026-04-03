@@ -88,84 +88,77 @@
             {Baño: 'J', Sala: 'W', Cocina: 'B', Lavanderia: 'T', Nada: 'A'}
         ];
 
-        const startDate = new Date(2026, 0, 16, 12, 0, 0); // 16 января 2026
-        
-        const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        // Start date: Friday Jan 16, 2026
+        const startDate = new Date(2026, 0, 16);
+
+        const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio',
+            'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+        // DST-safe week diff: uses UTC midnight to avoid hour-shift errors
+        function diffInWeeks(friday) {
+            const d1 = Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+            const d2 = Date.UTC(friday.getFullYear(), friday.getMonth(), friday.getDate());
+            const diffDays = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+            return Math.floor(diffDays / 7);
+        }
 
         function renderMonths() {
             let html = '';
-            for (let year = 2026; year <= 2028; year++) {
-                for (let month = 0; month < 12; month++) {
-                    const quarter = Math.floor(month / 3);
-                    const colorClass = quarter % 2 === 0 ? 'green' : 'blue';
-                    html += `<button class="month-button ${colorClass}" onclick="showMonth(${year}, ${month})">${monthNames[month]} ${year}</button>`;
-                }
-            }
+            // Only Jan 2026 through July 2026
+            const months = [0,1,2,3,4,5,6]; // Jan=0 ... Jul=6
+            months.forEach((month, i) => {
+                const colorClass = i % 2 === 0 ? 'green' : 'blue';
+                html += `<button class="month-button ${colorClass}" onclick="showMonth(2026, ${month})">${monthNames[month]} 2026</button>`;
+            });
             document.getElementById('monthsContainer').innerHTML = html;
         }
 
-        function showMonth(year, month) {
+        function getWeekends(year, month) {
             const weekends = [];
-            
-            // Проверяем все пятницы текущего месяца
+
+            // Fridays in this month
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             for (let day = 1; day <= daysInMonth; day++) {
-                const date = new Date(year, month, day, 12, 0, 0);
-                const dayOfWeek = date.getDay();
-                
-                if (dayOfWeek === 5) {
-                    const friday = new Date(year, month, day, 12, 0, 0);
-                    const saturday = new Date(year, month, day + 1, 12, 0, 0);
-                    const sunday = new Date(year, month, day + 2, 12, 0, 0);
-                    
-                    const diffTime = friday - startDate;
-                    const diffWeeks = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));
-                    const rotationIndex = ((diffWeeks % 5) + 5) % 5;
-                    
-                    const schedule = rotationPattern[rotationIndex];
-                    
+                const date = new Date(year, month, day);
+                if (date.getDay() === 5) {
+                    const friday = new Date(year, month, day);
+                    const saturday = new Date(year, month, day + 1);
+                    const sunday = new Date(year, month, day + 2);
+                    const rotationIndex = ((diffInWeeks(friday) % 5) + 5) % 5;
                     weekends.push({
-                        friday: formatDate(friday),
-                        saturday: formatDate(saturday),
-                        sunday: formatDate(sunday),
-                        schedule: schedule
+                        friday, saturday, sunday,
+                        schedule: rotationPattern[rotationIndex]
                     });
                 }
             }
-            
-            // Проверяем пятницу предыдущего месяца (если суббота/воскресенье в текущем месяце)
+
+            // Check if previous month's last Friday spills Sat/Sun into this month
             const prevMonth = month === 0 ? 11 : month - 1;
-            const prevYear = month === 0 ? year - 1 : year;
-            const daysInPrevMonth = new Date(prevYear, prevMonth + 1, 0).getDate();
-            
-            for (let day = Math.max(1, daysInPrevMonth - 6); day <= daysInPrevMonth; day++) {
-                const date = new Date(prevYear, prevMonth, day, 12, 0, 0);
-                const dayOfWeek = date.getDay();
-                
-                if (dayOfWeek === 5) {
-                    const friday = new Date(prevYear, prevMonth, day, 12, 0, 0);
-                    const saturday = new Date(prevYear, prevMonth, day + 1, 12, 0, 0);
-                    const sunday = new Date(prevYear, prevMonth, day + 2, 12, 0, 0);
-                    
-                    // Проверяем, что суббота или воскресенье в текущем месяце
+            const prevYear  = month === 0 ? year - 1 : year;
+            const daysInPrev = new Date(prevYear, prevMonth + 1, 0).getDate();
+
+            for (let day = Math.max(1, daysInPrev - 6); day <= daysInPrev; day++) {
+                const date = new Date(prevYear, prevMonth, day);
+                if (date.getDay() === 5) {
+                    const friday   = new Date(prevYear, prevMonth, day);
+                    const saturday = new Date(prevYear, prevMonth, day + 1);
+                    const sunday   = new Date(prevYear, prevMonth, day + 2);
                     if (saturday.getMonth() === month || sunday.getMonth() === month) {
-                        const diffTime = friday - startDate;
-                        const diffWeeks = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));
-                        const rotationIndex = ((diffWeeks % 5) + 5) % 5;
-                        
-                        const schedule = rotationPattern[rotationIndex];
-                        
+                        const rotationIndex = ((diffInWeeks(friday) % 5) + 5) % 5;
                         weekends.unshift({
-                            friday: formatDate(friday),
-                            saturday: formatDate(saturday),
-                            sunday: formatDate(sunday),
-                            schedule: schedule
+                            friday, saturday, sunday,
+                            schedule: rotationPattern[rotationIndex]
                         });
                     }
                 }
             }
-            
+
+            return weekends;
+        }
+
+        function showMonth(year, month) {
+            const weekends = getWeekends(year, month);
+
             let html = '<table>';
             html += '<tr>';
             html += '<th class="weekend-col">Fin de Semana (V-D)</th>';
@@ -175,29 +168,27 @@
             html += '<th>Lavanderia</th>';
             html += '<th>Nada</th>';
             html += '</tr>';
-            
-            weekends.forEach(weekend => {
+
+            weekends.forEach(w => {
                 html += '<tr>';
-                html += '<td class="weekend-col">' + weekend.friday + ' al ' + weekend.sunday + '</td>';
-                html += '<td>' + rooms[weekend.schedule.Baño] + '</td>';
-                html += '<td>' + rooms[weekend.schedule.Sala] + '</td>';
-                html += '<td>' + rooms[weekend.schedule.Cocina] + '</td>';
-                html += '<td>' + rooms[weekend.schedule.Lavanderia] + '</td>';
-                html += '<td>' + (weekend.schedule.Nada ? rooms[weekend.schedule.Nada] : '') + '</td>';
+                html += `<td class="weekend-col">${fmt(w.friday)} al ${fmt(w.sunday)}</td>`;
+                html += `<td>${rooms[w.schedule.Baño]}</td>`;
+                html += `<td>${rooms[w.schedule.Sala]}</td>`;
+                html += `<td>${rooms[w.schedule.Cocina]}</td>`;
+                html += `<td>${rooms[w.schedule.Lavanderia]}</td>`;
+                html += `<td>${rooms[w.schedule.Nada] || ''}</td>`;
                 html += '</tr>';
             });
-            
+
             html += '</table>';
             document.getElementById('result').innerHTML = html;
-            
-            // Автоматический скролл к таблице
             document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
-        function formatDate(date) {
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            return `${day}/${month}`;
+        function fmt(date) {
+            const d = String(date.getDate()).padStart(2, '0');
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            return `${d}/${m}`;
         }
 
         renderMonths();
